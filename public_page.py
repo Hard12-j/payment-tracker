@@ -37,6 +37,7 @@ def render():
             text = ocr_utils.extract_text(data)
     except Exception:
         st.error("Could not read that image. Please upload a clear, full screenshot (PNG/JPG).")
+        st.exception(e)
         return
 
     img_hash = verify.image_hash(data)
