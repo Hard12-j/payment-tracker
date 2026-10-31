@@ -1,0 +1,12 @@
+credentials.json
+token.json
+payments.xlsx
+.payments.tmp.xlsx
+receipts/
+uploads/
+.streamlit/secrets.toml
+.env
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/
