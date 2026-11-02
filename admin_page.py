@@ -190,16 +190,49 @@ def _tab_history():
     c1, c2 = st.columns([3, 1])
     q = c1.text_input("Search by name, plot no. or receipt no. / transaction ID")
     src = c2.selectbox("Source", ["All", store.SOURCE_ADMIN, store.SOURCE_ONLINE])
-    view = df
+        view = df
     if src != "All":
         view = view[view["Source"] == src]
-    if q:
-        mask = view[["Receipt No", "Name", "Plot No"]].apply(
-            lambda col: col.str.contains(q, case=False, na=False, regex=False)).any(axis=1)
-        view = view[mask]
-    shown = view.drop(columns=["Screenshot Hash"], errors="ignore")
-    st.dataframe(shown.iloc[::-1], use_container_width=True, hide_index=True)
 
+    label = "Total (all records)" if src == "All" else f"Total ({src} payments)"
+    if q and q.strip():
+        qq = q.strip()
+        plots = view["Plot No"].astype(str).str.strip()
+        text_hit = view[["Receipt No", "Name"]].apply(
+            lambda col: col.str.contains(qq, case=False, na=False, regex=False)).any(axis=1)
+        if (plots.str.lower() == qq.lower()).any():
+            # the text is exactly a plot number: match that plot only (so "12" does not pull in 112)
+            view = view[(plots.str.lower() == qq.lower()) | text_hit]
+            label = f"Total for Plot {qq}"
+        else:
+            plot_hit = plots.str.contains(qq, case=False, na=False, regex=False)
+            view = view[plot_hit | text_hit]
+            label = f'Total for "{qq}"'
+
+    total = store.total_amount(view)
+    shown = view.drop(columns=["Screenshot Hash"], errors="ignore").iloc[::-1]
+    if not view.empty:
+        total_row = {c: "" for c in shown.columns}
+        total_row["Name"] = f"TOTAL ({len(view)} payment{'s' if len(view) != 1 else ''})"
+        total_row["Amount"] = f"{total:,.2f}"
+        shown = pd.concat([shown, pd.DataFrame([total_row])], ignore_index=True)
+        last = len(shown) - 1
+        st.dataframe(
+            shown.style.apply(
+                lambda r: ["font-weight: bold; background-color: rgba(128,128,128,0.18)"
+                           if r.name == last else "" for _ in r], axis=1),
+            use_container_width=True, hide_index=True)
+        st.metric(label, f"₹{total:,.2f}", help=f"{len(view)} payment(s) in the table above")
+        by_plot = store.totals_by_plot(view)
+        if len(by_plot) > 1:
+            with st.expander(f"Total per plot ({len(by_plot)} plots)"):
+                st.dataframe(
+                    pd.DataFrame([{"Plot No": k, "Payments": n, "Total (₹)": f"{t:,.2f}"}
+                                  for k, n, t in by_plot]),
+                    use_container_width=True, hide_index=True)
+    else:
+        st.info("No records match your search.")
+        
     st.download_button(
         "⬇️ Download as Excel", store.export_xlsx_bytes(), file_name="payments.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")

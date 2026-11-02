@@ -19,6 +19,7 @@ import re
 import threading
 import time
 from datetime import datetime
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 import pandas as pd
@@ -400,7 +401,7 @@ def find_duplicate(txn_key: str, img_hash: str, file_path=None):
 
 
 def add_online_payment(name, plot_no, amount, txn_id, img_hash, receipt_link="", remarks="",
-                       file_path=None) -> dict:
+                       file_path=None, email="", phone="") -> dict:
     """Save a public-form payment. Receipt No = transaction ID; Receipt Link = Drive link of the
     payer's screenshot. The duplicate check and the write happen under one lock (no race).
     Raises DuplicateError with the reason if it is already recorded."""
@@ -420,6 +421,8 @@ def add_online_payment(name, plot_no, amount, txn_id, img_hash, receipt_link="",
             "Plot No": plot_no,
             "Amount": f"{float(amount):.2f}",
             "Payment Mode": "Online",
+            "Email": str(email or "").strip(),
+            "Phone": str(phone or "").strip(),
             "Remarks": remarks,
             "Receipt Link": receipt_link,
             "Source": SOURCE_ONLINE,
@@ -502,6 +505,7 @@ def load_attempts(file_path=None) -> pd.DataFrame:
         return _to_df(be.read(ATTEMPT_SHEET), ATTEMPT_HEADERS)
     except PermissionError:
         return pd.DataFrame(columns=ATTEMPT_HEADERS)
+
 
 
 def export_xlsx_bytes(file_path=None) -> bytes:

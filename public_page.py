@@ -1,6 +1,7 @@
 """PUBLIC page: the online-payment form only. Nothing else is shown to the public
 (no records, no rejected attempts, no bank check)."""
 import mimetypes
+import re
 
 import streamlit as st
 
@@ -21,6 +22,9 @@ def render():
         plot_no = st.text_input("Plot no.")
         amount = st.number_input("Amount paid (₹)", min_value=1.0, step=100.0, format="%.2f")
         txn_id = st.text_input("Transaction ID / UTR")
+        c_email, c_phone = st.columns(2)
+        email = c_email.text_input("Email (optional)")
+        phone = c_phone.text_input("Phone / WhatsApp (optional)")
         shot = st.file_uploader("Payment screenshot", type=["png", "jpg", "jpeg", "webp"])
         go = st.form_submit_button("Submit")
 
@@ -29,7 +33,13 @@ def render():
 
     if not (name.strip() and plot_no.strip() and txn_id.strip() and shot):
         st.error("All fields and the screenshot are required.")
-        return
+        problem = contact_problem(email, phone)
+        if problem:
+            st.error(problem)
+            return
+        
+
+     
 
     data = shot.getvalue()
     try:
@@ -54,7 +64,7 @@ def render():
         link, remark = _save_screenshot(data, shot.name, txn_id, img_hash)
         try:
             rec = store.add_online_payment(name.strip(), plot_no.strip(), amount, txn_id,
-                                           img_hash, receipt_link=link, remarks=remark)
+                                           img_hash, receipt_link=link, remarks=remark,email=email.strip(), phone=phone.strip())
         except store.DuplicateError as e:      # two people submitted the same thing at once
             store.log_attempt(name, plot_no, amount, txn_id, str(e))
             _show_rejection([str(e)], text)
@@ -67,6 +77,16 @@ def render():
     st.write(f"**Receipt No (Transaction ID):** {rec['Receipt No']}")
     st.write(f"**Amount:** ₹{float(rec['Amount']):,.2f}  \n**Plot no.:** {rec['Plot No']}")
 
+def contact_problem(email: str, phone: str):
+    """Email and phone are optional; if filled they must look valid. Returns a message or None."""
+    email, phone = (email or "").strip(), (phone or "").strip()
+    if email and not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email):
+        return "The email address looks invalid. Fix it or leave it empty."
+    if phone:
+        digits = re.sub(r"\D", "", phone)
+        if not (10 <= len(digits) <= 13):
+            return "The phone number looks invalid. Enter 10 digits or leave it empty."
+    return None
 
 def _save_screenshot(data: bytes, original_name: str, txn_id: str, img_hash: str):
     """Upload the screenshot to Google Drive; its link becomes the record's Receipt Link.
