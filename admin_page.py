@@ -256,10 +256,15 @@ def _tab_bank_check():
     st.write("Upload your bank statement (CSV/Excel). Online payments whose **transaction ID "
              "(Receipt No)** and **amount** appear on the same statement row are marked "
              "**Confirmed**. Screenshots can be edited, so this is the check you can fully trust.")
-    stmt = st.file_uploader("Bank statement", type=["csv", "xlsx"], key="stmt")
+    stmt = st.file_uploader("Bank statement", type=["csv", "xlsx", "xls", "pdf"], key="stmt")
+    pwd = st.text_input("Statement password (only if the file is locked)", type="password",
+                        key="stmt_pw", help="Used only to open the file now. It is never saved.")
     if stmt and st.button("Match against statement"):
         try:
-            sdf = bank_check.read_statement(stmt)
+            sdf = bank_check.read_statement(stmt, pwd)
+        except bank_check.WrongPassword as e:
+            st.error(str(e))
+            return
         except Exception as e:
             st.error(f"Could not read that statement: {e}")
             return
