@@ -506,7 +506,32 @@ def load_attempts(file_path=None) -> pd.DataFrame:
     except PermissionError:
         return pd.DataFrame(columns=ATTEMPT_HEADERS)
 
+def amount_value(x) -> Decimal:
+    """'5,000.50' / '₹5000' / 5000 -> Decimal. Anything unreadable counts as 0."""
+    try:
+        return Decimal(re.sub(r"[^0-9.\-]", "", str(x)) or "0")
+    except InvalidOperation:
+        return Decimal("0")
 
+
+def total_amount(df) -> Decimal:
+    if df is None or df.empty or "Amount" not in df.columns:
+        return Decimal("0")
+    return sum((amount_value(v) for v in df["Amount"]), Decimal("0"))
+
+
+def totals_by_plot(df):
+    """[(plot_no, number_of_payments, total), ...] sorted by plot number."""
+    out = {}
+    if df is not None and not df.empty:
+        for plot, amt in zip(df["Plot No"], df["Amount"]):
+            key = str(plot).strip() or "(blank)"
+            n, tot = out.get(key, (0, Decimal("0")))
+            out[key] = (n + 1, tot + amount_value(amt))
+
+    def sort_key(k):
+        return (0, int(k)) if k.isdigit() else (1, k.lower())
+    return [(k, n, t) for k, (n, t) in sorted(out.items(), key=lambda kv: sort_key(kv[0]))]
 
 def export_xlsx_bytes(file_path=None) -> bytes:
     """Both tabs as an .xlsx file (for the admin 'Download Excel' button)."""
