@@ -30,12 +30,6 @@ def render():
         st.rerun()
         admin_auth.change_password_widget()
 
-    sheet_url = store.storage_url()
-    if sheet_url:
-        st.caption(f"Data is stored in Google Sheets: [open the sheet]({sheet_url})")
-    else:
-        st.caption("Data is stored in the local file payments.xlsx")
-
     tab_new, tab_history, tab_bank, tab_rej = st.tabs(
         ["New payment", "History / Resend", "Bank check", "Rejected attempts"])
     with tab_new:
@@ -104,7 +98,6 @@ def _tab_new_payment():
         name = st.text_input("Name *")
         plot_no = st.text_input("Plot no. *")
         amount = st.number_input("Amount (Rs.) *", min_value=0.0, step=100.0, format="%.2f")
-        mode = st.selectbox("Payment mode", ["Cash", "UPI", "Cheque", "Bank transfer", "Card"])
         c1, c2 = st.columns(2)
         email = c1.text_input("Email")
         phone = c2.text_input("Phone / WhatsApp (10 digits)")
@@ -139,7 +132,7 @@ def _tab_new_payment():
                 "Name": name.strip(),
                 "Plot No": plot_no.strip(),
                 "Amount": str(Decimal(str(amount)).quantize(Decimal("0.01"))),
-                "Payment Mode": mode,
+                "Payment Mode": "Cash",
                 "Email": email.strip(),
                 "Phone": phone.strip(),
                 "Remarks": remarks.strip(),
