@@ -1,8 +1,6 @@
 """ADMIN page (password protected): cash entries + receipts, history/resend,
 bank check, rejected attempts. Opened at  http://<host>:8501/?admin"""
-import hmac
 import re
-import time
 from datetime import datetime
 from decimal import Decimal
 from pathlib import Path
@@ -10,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+import admin_auth
 import bank_check
 import receipts
 import store
@@ -17,32 +16,11 @@ from drive_uploader import upload_receipt
 from settings import ENABLE_DRIVE_UPLOAD, get_setting
 
 
-# --------------------------------------------------------------------------
-# Login (fails closed: no ADMIN_PASSWORD configured = admin area disabled)
-# --------------------------------------------------------------------------
-def _logged_in() -> bool:
-    password = get_setting("ADMIN_PASSWORD")
-    if not password:
-        st.error("Admin area is disabled. Set ADMIN_PASSWORD in .streamlit/secrets.toml.")
-        return False
-    if st.session_state.get("is_admin"):
-        return True
-    st.title("🔒 Admin login")
-    with st.form("login"):
-        typed = st.text_input("Password", type="password")
-        ok = st.form_submit_button("Log in")
-    if ok:
-        if hmac.compare_digest(typed.encode(), password.encode()):
-            st.session_state["is_admin"] = True
-            st.rerun()
-        else:
-            time.sleep(1)  # slow down password guessing
-            st.error("Wrong password.")
-    return False
+
 
 
 def render():
-    if not _logged_in():
+    if not admin_auth.require_admin():
         return
 
     head_l, head_r = st.columns([6, 1])
@@ -50,6 +28,7 @@ def render():
     if head_r.button("Log out"):
         st.session_state.clear()
         st.rerun()
+        admin_auth.change_password_widget()
 
     sheet_url = store.storage_url()
     if sheet_url:
