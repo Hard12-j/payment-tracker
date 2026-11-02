@@ -190,7 +190,7 @@ def _tab_history():
     c1, c2 = st.columns([3, 1])
     q = c1.text_input("Search by name, plot no. or receipt no. / transaction ID")
     src = c2.selectbox("Source", ["All", store.SOURCE_ADMIN, store.SOURCE_ONLINE])
-        view = df
+    view = df
     if src != "All":
         view = view[view["Source"] == src]
 
@@ -232,7 +232,7 @@ def _tab_history():
                     use_container_width=True, hide_index=True)
     else:
         st.info("No records match your search.")
-        
+
     st.download_button(
         "⬇️ Download as Excel", store.export_xlsx_bytes(), file_name="payments.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
