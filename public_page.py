@@ -14,9 +14,13 @@ SAVE_ERROR = "We could not save your payment right now. Please try again in a mi
 
 
 def render():
-    st.title("🧾 Online payment")
+    title_col, admin_col = st.columns([4, 1])
+    title_col.title("🧾 Online payment")
+    if admin_col.button("🔒 ADMIN LOGIN", use_container_width=True):
+        st.query_params["admin"] = ""      # same as opening /?admin
+        st.rerun()
     st.caption("Pay to our account, then fill this form with your payment screenshot.")
-
+    
     with st.form("form"):
         name = st.text_input("Payer name")
         plot_no = st.text_input("Plot no.")

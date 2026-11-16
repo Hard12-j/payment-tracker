@@ -20,6 +20,10 @@ from settings import ENABLE_DRIVE_UPLOAD, get_setting
 
 
 def render():
+    if not st.session_state.get("is_admin"):
+        if st.button("← Back to payment form"):
+            st.query_params.clear()      # removes ?admin
+            st.rerun()
     if not admin_auth.require_admin():
         return
 
